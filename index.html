@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Office File Multi-Entry & Calendar Reminder</title>
+    <title>Office File Smart Calendar Reminder</title>
     <!-- FontAwesome Icons ലിങ്ക് -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -52,10 +52,9 @@
             gap: 8px;
         }
         
-        /* 📱 മൊബൈലിൽ ടേബിൾ മൂവ് ചെയ്യാൻ സഹായിക്കുന്ന പ്രധാന ഭാഗം */
         .table-responsive {
             width: 100%;
-            overflow-x: auto; /* സൈഡിലേക്ക് സ്ക്രോൾ ചെയ്യാൻ അനുവദിക്കുന്നു */
+            overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             margin-top: 15px;
             border: 1px solid #e1e8ed;
@@ -65,7 +64,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 750px; /* മൊബൈലിൽ കോളം ചുരുങ്ങിപ്പോകാതിരിക്കാൻ മിനിമം വീതി നൽകി */
+            min-width: 750px;
         }
         th, td {
             padding: 10px;
@@ -76,7 +75,7 @@
         th {
             background-color: #f8f9fa;
             color: var(--primary);
-            white-space: nowrap; /* ഹെഡിങ് താഴേക്ക് മറിഞ്ഞു പോകാതിരിക്കാൻ */
+            white-space: nowrap;
         }
         
         input[type="text"], input[type="date"] {
@@ -86,7 +85,6 @@
             border-radius: 4px;
             box-sizing: border-box;
             font-size: 0.9rem;
-            -webkit-appearance: none; /* ഐഫോൺ സ്റ്റൈൽ മാറ്റാൻ */
         }
         input[type="text"]:focus, input[type="date"]:focus {
             border-color: var(--calendar-color);
@@ -96,12 +94,12 @@
         .btn-container {
             margin-top: 20px;
             display: flex;
-            flex-direction: column; /* മൊബൈലിൽ ബട്ടണുകൾ ഒന്നിന് താഴെ ഒന്നാക്കാൻ */
+            flex-direction: column;
             gap: 10px;
         }
         @media (min-width: 600px) {
             .btn-container {
-                flex-direction: row; /* കമ്പ്യൂട്ടറിൽ വരുമ്പോൾ ബട്ടണുകൾ സൈഡ് ബൈ സൈഡ് ആകും */
+                flex-direction: row;
                 justify-content: space-between;
             }
         }
@@ -119,10 +117,10 @@
             justify-content: center;
             gap: 8px;
             transition: 0.2s;
-            width: 100%; /* മൊബൈലിൽ ഫുൾ വിഡ്ത് */
+            width: 100%;
         }
         @media (min-width: 600px) {
-            button { width: auto; } /* വലിയ സ്ക്രീനിൽ ആവശ്യത്തിന് മാത്രം വലിപ്പം */
+            button { width: auto; }
         }
         
         .btn-add { background-color: #27ae60; }
@@ -145,7 +143,7 @@
             gap: 5px;
         }
         @media (min-width: 768px) {
-            .scroll-hint { display: none; } /* കമ്പ്യൂട്ടറിൽ ഈ മെസ്സേജ് കാണിക്കില്ല */
+            .scroll-hint { display: none; }
         }
     </style>
 </head>
@@ -161,12 +159,10 @@
         <div class="card">
             <h2><i class="fa-solid fa-table-list"></i> ഫയൽ വിവരങ്ങൾ ചേർക്കുക (Data Entry)</h2>
             
-            <!-- മൊബൈലിൽ കൈകൊണ്ട് നീക്കാൻ ഓർമ്മിപ്പിക്കുന്ന ചെറിയ സൂചന -->
             <div class="scroll-hint">
                 <i class="fa-solid fa-arrow-left-right"></i> <span>മൊബൈലിൽ കോളം കാണാൻ ടേബിൾ ഇടത്തോട്ടോ വലത്തോട്ടോ നീക്കുക (Scroll).</span>
             </div>
 
-            <!-- ടേബിൾ സ്ക്രോൾ ചെയ്യാൻ സഹായിക്കുന്ന കവർ (Wrapper) -->
             <div class="table-responsive">
                 <table id="entryTable">
                     <thead>
@@ -255,9 +251,22 @@
 
                 if (subject && dateVal) {
                     filledCount++;
-                    let formattedDate = dateVal.replace(/-/g, '');
                     
-                    let googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Office Due: ' + subject)}&dates=${formattedDate}/${formattedDate}&details=${encodeURIComponent(remarks || 'No remarks')}&sf=true&output=xml`;
+                    // Start Date ഫോർമാറ്റ് ചെയ്യുന്നു (YYYYMMDD)
+                    let startDateObj = new Date(dateVal);
+                    let formattedStartDate = dateVal.replace(/-/g, '');
+                    
+                    // 🌟 എറർ ഒഴിവാക്കാനായി അടുത്ത ദിവസം (End Date) കണ്ടെത്തുന്നു
+                    let endDateObj = new Date(startDateObj);
+                    endDateObj.setDate(startDateObj.getDate() + 1);
+                    
+                    let ey = endDateObj.getFullYear();
+                    let em = (endDateObj.getMonth() + 1).toString().padStart(2, '0');
+                    let ed = endDateObj.getDate().toString().padStart(2, '0');
+                    let formattedEndDate = `${ey}${em}${ed}`;
+                    
+                    // ഗൂഗിൾ കലണ്ടർ ലിങ്ക് - All-day event രൂപത്തിൽ (Start/End എറർ വരില്ല)
+                    let googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Office Due: ' + subject)}&dates=${formattedStartDate}/${formattedEndDate}&details=${encodeURIComponent(remarks || 'No remarks')}&sf=true&output=xml`;
                     
                     window.open(googleCalUrl, '_blank');
                 }
@@ -270,3 +279,4 @@
     </script>
 </body>
 </html>
+
