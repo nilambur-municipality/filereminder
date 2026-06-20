@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office File Smart Manager</title>
+    <!-- FontAwesome Icons ലിങ്ക് -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS - Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --primary-light: #34495e;
+            --calendar-color: #4285F4;
+            --success-color: #27ae60;
+            --success-dark: #1e8449;
+            --danger-color: #e74c3c;
+            --danger-dark: #c0392b;
+            --warning-color: #e67e22;
+            --bg: #f5f7fa;
+            --card-bg: #ffffff;
+            --text: #2c2c2c;
+            --text-muted: #7f8c8d;
+            --border: #e1e8ed;
+            --row-alt: #f9fafb;
+            --shadow: rgba(0,0,0,0.06);
+            --accent: #8e44ad;
+            --transition: 0.2s ease;
+        }
+
+        [data-theme="dark"] {
+            --primary: #1a232e;
+            --primary-light: #243140;
+            --bg: #121821;
+            --card-bg: #1c2530;
+            --text: #e6edf3;
+            --text-muted: #9aa7b4;
+            --border: #2d3a47;
+            --row-alt: #212c38;
+            --shadow: rgba(0,0,0,0.35);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 0;
+            color: var(--text);
+            transition: background-color var(--transition), color var(--transition);
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            text-align: center;
+            padding: 25px 15px;
+            position: relative;
+        }
+        .header h1 { margin: 0; font-size: 1.5rem; }
+        .header p { margin: 8px 0 0 0; opacity: 0.9; font-size: 0.85rem; }
+
+        .theme-toggle {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background var(--transition), transform var(--transition);
+        }
+        .theme-toggle:hover { background: rgba(255,255,255,0.3); transform: scale(1.08); }
+
+        .container {
+            max-width: 1200px;
+            margin: -15px auto 40px auto;
+            padding: 0 10px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px var(--shadow);
+            margin-bottom: 25px;
+            animation: fadeUp 0.4s ease both;
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            margin-top: 0;
+            color: var(--text);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 8px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        h2 .count-pill {
+            margin-left: auto;
+            background: var(--bg);
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: normal;
+            border: 1px solid var(--border);
+        }
+
+        /* ---- Stats dashboard ---- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        @media (min-width: 700px) {
+            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+        .stat-box {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 15px var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 4px solid var(--primary);
+        }
+        .stat-box.overdue { border-left-color: var(--danger-color); }
+        .stat-box.soon { border-left-color: var(--warning-color); }
+        .stat-box.ok { border-left-color: var(--success-color); }
+        .stat-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            color: white;
+            background: var(--primary);
+            flex-shrink: 0;
+        }
+        .stat-box.overdue .stat-icon { background: var(--danger-color); }
+        .stat-box.soon .stat-icon { background: var(--warning-color); }
+        .stat-box.ok .stat-icon { background: var(--success-color); }
+        .stat-num { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+        .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: 15px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 900px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid var(--border);
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        th {
+            background-color: var(--bg);
+            color: var(--text);
+            white-space: nowrap;
+        }
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { background-color: var(--row-alt); }
+        th.sortable i.sort-icon { margin-left: 4px; opacity: 0.4; font-size: 0.75rem; }
+        th.sortable.active i.sort-icon { opacity: 1; color: var(--calendar-color); }
+
+        .saved-table tbody tr:nth-child(even) { background-color: var(--row-alt); }
+        .saved-table tbody tr { transition: background-color var(--transition); }
+        .saved-table tbody tr:hover { background-color: rgba(66, 133, 244, 0.08); }
+
+        input[type="text"], input[type="date"], select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+            background-color: var(--card-bg);
+            color: var(--text);
+        }
+
+        .search-box {
+            position: relative;
+            margin-top: 10px;
+            margin-bottom: 15px;
+        }
+        .search-box input { padding-left: 35px; }
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+        .filter-row > div { flex: 1; min-width: 140px; }
+        .filter-row label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .btn-container {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        @media (min-width: 600px) {
+            .btn-container {
+                flex-direction: row;
+                justify-content: space-between;
+            }
+        }
+
+        button {
+            color: white;
+            border: none;
+            padding: 12px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform var(--transition), filter var(--transition);
+            width: 100%;
+        }
+        button:hover { filter: brightness(1.08); }
+        button:active { transform: scale(0.97); }
+        @media (min-width: 600px) { button { width: auto; } }
+
+        .btn-add { background-color: var(--success-color); }
+        .btn-submit { background-color: var(--primary); }
+        .btn-bulk-cal { background-color: var(--calendar-color); font-size: 1rem; padding: 14px 25px; }
+        .btn-excel { background-color: #217346; }
+        .btn-delete { background-color: var(--danger-color); padding: 6px 10px; }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+        .toolbar button { flex: 1; min-width: 160px; }
+        @media (min-width: 600px) { .toolbar button { width: auto; flex: 0 1 auto; } }
+
+        .row-number {
+            font-weight: bold;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        .scroll-hint {
+            font-size: 0.8rem;
+            color: var(--warning-color);
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        @media (min-width: 768px) { .scroll-hint { display: none; } }
+
+        .saved-table th { background-color: var(--primary); color: white; }
+        .btn-action-del { background-color: var(--danger-color); padding: 6px 10px; font-size: 0.8rem; }
+        .btn-action-remind { background-color: var(--calendar-color); padding: 6px 10px; font-size: 0.8rem; margin-right: 4px; }
+
+        .guide-box {
+            background-color: rgba(66, 133, 244, 0.1);
+            border-left: 5px solid var(--calendar-color);
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+
+        /* Status badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .badge-overdue { background: rgba(231,76,60,0.15); color: var(--danger-color); }
+        .badge-soon { background: rgba(230,126,34,0.15); color: var(--warning-color); }
+        .badge-ok { background: rgba(39,174,96,0.15); color: var(--success-color); }
+
+        /* checkbox column for bulk actions */
+        .row-check { width: 18px; height: 18px; cursor: pointer; }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px 10px;
+            color: var(--text-muted);
+        }
+        .empty-state i { font-size: 2rem; margin-bottom: 10px; opacity: 0.5; }
+
+        /* Toast notification */
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--primary);
+            color: white;
+            padding: 12px 22px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 999;
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        #toast.error { background: var(--danger-color); }
+        #toast.success { background: var(--success-color); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Dark/Light Mode">
+            <i class="fa-solid fa-moon" id="themeIcon"></i>
+        </button>
+        <h1><i class="fa-solid fa-folder-tree"></i> Office File Smart Manager</h1>
+        <p>ഡാറ്റ എന്റർ ചെയ്യുക, സേവ് ചെയ്തവ തിരയുക, ഒരൊറ്റ ക്ലിക്കിൽ കലണ്ടറിലേക്ക് മാറ്റുക</p>
+    </div>
+
+    <div class="container">
+
+        <!-- 0. STATS DASHBOARD -->
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-icon"><i class="fa-solid fa-folder-open"></i></div>
+                <div>
+                    <div class="stat-num" id="statTotal">0</div>
+                    <div class="stat-label">മൊത്തം ഫയലുകൾ</div>
+                </div>
+            </div>
+            <div class="stat-box overdue">
+                <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div>
+                    <div class="stat-num" id="statOverdue">0</div>
+                    <div class="stat-label">കാലാവധി കഴിഞ്ഞവ</div>
+                </div>
+            </div>
+            <div class="stat-box soon">
+                <div class="stat-icon"><i class="fa-solid fa-clock"></i></div>
+                <div>
+                    <div class="stat-num" id="statSoon">0</div>
+                    <div class="stat-label">3 ദിവസത്തിനുള്ളിൽ</div>
+                </div>
+            </div>
+            <div class="stat-box ok">
+                <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+                <div>
+                    <div class="stat-num" id="statOk">0</div>
+                    <div class="stat-label">സമയമുണ്ട്</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. DATA ENTRY CARD -->
+        <div class="card">
+            <h2><i class="fa-solid fa-table-list"></i> പുതിയ ഫയൽ വിവരങ്ങൾ ചേർക്കുക (Data Entry)</h2>
+            <div class="scroll-hint">
+                <i class="fa-solid fa-arrow-left-right"></i> <span>മൊബൈലിൽ കൂടുതൽ കോളങ്ങൾ കാണാൻ ടേബിൾ സൈഡിലേക്ക് നീക്കുക.</span>
+            </div>
+
+            <div class="table-responsive">
+                <table id="entryTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">Srl No</th>
+                            <th style="width: 220px;"><i class="fa-solid fa-heading"></i> Subject</th>
+                            <th style="width: 150px;"><i class="fa-solid fa-hashtag"></i> File No</th>
+                            <th style="width: 140px;"><i class="fa-solid fa-calendar-day"></i> Date</th>
+                            <th style="width: 140px;"><i class="fa-solid fa-calendar-check"></i> Due Date</th>
+                            <th style="width: 200px;"><i class="fa-solid fa-align-left"></i> Description</th>
+                            <th style="width: 70px; text-align: center;"><i class="fa-solid fa-trash"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="row-number">1</td>
+                            <td><input type="text" class="file-subject" placeholder="ഫയലിന്റെ പേര്..."></td>
+                            <td><input type="text" class="file-no" placeholder="File No..."></td>
+                            <td><input type="date" class="file-date"></td>
+                            <td><input type="date" class="file-duedate"></td>
+                            <td><input type="text" class="file-desc" placeholder="വിശദവിവരങ്ങൾ..."></td>
+                            <td style="text-align: center;"><button class="btn-delete" onclick="deleteRow(this)"><i class="fa-solid fa-trash-can"></i></button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="btn-container">
+                <button class="btn-add" onclick="addNewRow()"><i class="fa-solid fa-plus"></i> പുതിയ വരി ചേർക്കുക</button>
+                <button class="btn-submit" onclick="saveDataLocally()"><i class="fa-solid fa-floppy-disk"></i> ഈ പേജിലേക്ക് സേവ് ചെയ്യുക</button>
+            </div>
+        </div>
+
+        <!-- 2. SAVED DATA & SEARCH CARD -->
+        <div class="card">
+            <h2><i class="fa-solid fa-database"></i> സേവ് ചെയ്ത ഫയലുകൾ & സെർച്ച്
+                <span class="count-pill" id="savedCountPill">0 ഫയലുകൾ</span>
+            </h2>
+
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" onkeyup="filterSavedData()" placeholder="Subject, File No അല്ലെങ്കിൽ വിവരങ്ങൾ ടൈപ്പ് ചെയ്ത് തിരയുക...">
+            </div>
+
+            <div class="filter-row">
+                <div>
+                    <label><i class="fa-solid fa-filter"></i> സ്റ്റാറ്റസ് അനുസരിച്ച് ഫിൽറ്റർ</label>
+                    <select id="statusFilter" onchange="filterSavedData()">
+                        <option value="all">എല്ലാം കാണിക്കുക</option>
+                        <option value="overdue">കാലാവധി കഴിഞ്ഞവ മാത്രം</option>
+                        <option value="soon">3 ദിവസത്തിനുള്ളിൽ ഉള്ളവ</option>
+                        <option value="ok">സമയമുള്ളവ മാത്രം</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <button class="btn-excel" onclick="exportToExcel()"><i class="fa-solid fa-file-excel"></i> Excel ലേക്ക് എക്സ്പോർട്ട് ചെയ്യുക</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="saved-table" id="savedTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px; text-align: center;">Srl No</th>
+                            <th class="sortable" onclick="sortBy('subject')">Subject <i class="fa-solid fa-sort sort-icon"></i></th>
+                            <th class="sortable" onclick="sortBy('fileNo')">File No <i class="fa-solid fa-sort sort-icon"></i></th>
+                            <th class="sortable" onclick="sortBy('dateVal')">Date <i class="fa-solid fa-sort sort-icon"></i></th>
+                            <th class="sortable" onclick="sortBy('dueDateVal')">Due Date <i class="fa-solid fa-sort sort-icon"></i></th>
+                            <th>Description</th>
+                            <th style="text-align: center;">Status</th>
+                            <th style="text-align: center; width: 110px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- 🌟 ONE-CLICK SHORTCUT BUTTON -->
+            <div style="text-align: center; margin-top: 25px;">
+                <button class="btn-bulk-cal" onclick="oneClickCalendarSync()"><i class="fa-solid fa-calendar-check"></i> 📅 One-Click: ഗൂഗിൾ കലണ്ടറിലേക്ക് മാറ്റുക</button>
+            </div>
+
+            <div class="guide-box">
+                <strong>💡 വൺ-ക്ലിക്ക് ഉപയോഗിക്കേണ്ട രീതി:</strong><br>
+                മുകളിലെ നീല ബട്ടൺ അമർത്തുമ്പോൾ ഫയൽ തനിയെ ഡൗൺലോഡ് ആകുകയും, ഒപ്പം <strong>ഗൂഗിൾ കലണ്ടറിന്റെ ഇംപോർട്ട് വിൻഡോ ഒരു ചെറിയ പോപ്പ്-അപ്പ് ആയി മുകളിൽ തുറക്കുകയും ചെയ്യും.</strong> ഡൗൺലോഡ് ആയ ഫയൽ അതിലേക്ക് സെലക്ട് ചെയ്ത് കൊടുത്ത് കഴിഞ്ഞാൽ നിങ്ങളുടെ ജോലി തടസ്സമില്ലാതെ തുടരാം!
+            </div>
+        </div>
+
+    </div>
+
+    <div id="toast"><i class="fa-solid fa-circle-check"></i> <span id="toastMsg"></span></div>
+
+    <script>
+        let currentSort = { key: 'dueDateVal', dir: 'asc' };
+
+        window.onload = function() {
+            loadTheme();
+            displaySavedData();
+            let today = new Date().toISOString().split('T')[0];
+            document.querySelectorAll('input[type="date"]').forEach(inp => inp.min = today);
+            checkReminders();
+        };
+
+        /* ---------------- THEME (Dark Mode) ---------------- */
+        function loadTheme() {
+            let saved = localStorage.getItem('office_theme') || 'light';
+            applyTheme(saved);
+        }
+        function applyTheme(mode) {
+            document.documentElement.setAttribute('data-theme', mode === 'dark' ? 'dark' : 'light');
+            let icon = document.getElementById('themeIcon');
+            icon.className = mode === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        }
+        function toggleTheme() {
+            let current = document.documentElement.getAttribute('data-theme') || 'light';
+            let next = current === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+            localStorage.setItem('office_theme', next);
+        }
+
+        /* ---------------- TOAST ---------------- */
+        function showToast(message, type = 'success') {
+            let toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = message;
+            toast.className = 'show ' + type;
+            clearTimeout(window._toastTimer);
+            window._toastTimer = setTimeout(() => { toast.className = ''; }, 3000);
+        }
+
+        /* ---------------- ENTRY TABLE ---------------- */
+        function addNewRow() {
+            let table = document.getElementById("entryTable").getElementsByTagName('tbody')[0];
+            let rowCount = table.rows.length;
+            let newRow = table.insertRow(rowCount);
+            newRow.innerHTML = `
+                <td class="row-number">${rowCount + 1}</td>
+                <td><input type="text" class="file-subject" placeholder="ഫയലിന്റെ പേര്..."></td>
+                <td><input type="text" class="file-no" placeholder="File No..."></td>
+                <td><input type="date" class="file-date"></td>
+                <td><input type="date" class="file-duedate"></td>
+                <td><input type="text" class="file-desc" placeholder="വിശദവിവരങ്ങൾ..."></td>
+                <td style="text-align: center;"><button class="btn-delete" onclick="deleteRow(this)"><i class="fa-solid fa-trash-can"></i></button></td>
+            `;
+            let today = new Date().toISOString().split('T')[0];
+            newRow.querySelectorAll('input[type="date"]').forEach(inp => inp.min = today);
+            updateRowNumbers();
+        }
+
+        function updateRowNumbers() {
+            let rows = document.getElementById("entryTable").getElementsByTagName('tbody')[0].rows;
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].getElementsByClassName('row-number')[0].innerText = i + 1;
+            }
+        }
+
+        function deleteRow(button) {
+            let table = document.getElementById("entryTable").getElementsByTagName('tbody')[0];
+            if (table.rows.length > 1) {
+                let row = button.parentNode.parentNode;
+                row.parentNode.removeChild(row);
+                updateRowNumbers();
+            }
+        }
+
+        function saveDataLocally() {
+            let rows = document.getElementById("entryTable").getElementsByTagName('tbody')[0].rows;
+            let currentSaved = JSON.parse(localStorage.getItem('office_files_data')) || [];
+            let newlyAdded = 0;
+
+            for (let i = 0; i < rows.length; i++) {
+                let subject = rows[i].getElementsByClassName('file-subject')[0].value.trim();
+                let fileNo = rows[i].getElementsByClassName('file-no')[0].value.trim();
+                let dateVal = rows[i].getElementsByClassName('file-date')[0].value;
+                let dueDateVal = rows[i].getElementsByClassName('file-duedate')[0].value;
+                let desc = rows[i].getElementsByClassName('file-desc')[0].value.trim();
+
+                if (subject && dueDateVal) {
+                    currentSaved.push({
+                        id: Date.now() + Math.random(),
+                        subject, fileNo, dateVal, dueDateVal, desc
+                    });
+                    newlyAdded++;
+                    rows[i].getElementsByClassName('file-subject')[0].value = '';
+                    rows[i].getElementsByClassName('file-no')[0].value = '';
+                    rows[i].getElementsByClassName('file-date')[0].value = '';
+                    rows[i].getElementsByClassName('file-duedate')[0].value = '';
+                    rows[i].getElementsByClassName('file-desc')[0].value = '';
+                }
+            }
+
+            if (newlyAdded > 0) {
+                localStorage.setItem('office_files_data', JSON.stringify(currentSaved));
+                displaySavedData();
+                showToast(`${newlyAdded} ഫയൽ വിവരങ്ങൾ വിജയകരമായി സേവ് ചെയ്തു!`, 'success');
+            } else {
+                showToast('ദയവായി Subject, Due Date എന്നിവ കൃത്യമായി ടൈപ്പ് ചെയ്ത ശേഷം സേവ് അമർത്തു.', 'error');
+            }
+        }
+
+        /* ---------------- STATUS HELPERS ---------------- */
+        function getDaysDiff(dueDateVal) {
+            let today = new Date();
+            today.setHours(0,0,0,0);
+            let due = new Date(dueDateVal);
+            due.setHours(0,0,0,0);
+            return Math.round((due - today) / (1000 * 60 * 60 * 24));
+        }
+
+        function getStatus(dueDateVal) {
+            if (!dueDateVal) return { type: 'ok', label: 'തീയതി ഇല്ല', icon: 'fa-circle-check' };
+            let diff = getDaysDiff(dueDateVal);
+            if (diff < 0) return { type: 'overdue', label: `${Math.abs(diff)} ദിവസം കഴിഞ്ഞു`, icon: 'fa-triangle-exclamation' };
+            if (diff <= 3) return { type: 'soon', label: diff === 0 ? 'ഇന്ന്' : `${diff} ദിവസത്തിൽ`, icon: 'fa-clock' };
+            return { type: 'ok', label: `${diff} ദിവസം ബാക്കി`, icon: 'fa-circle-check' };
+        }
+
+        function badgeHtml(status) {
+            return `<span class="badge badge-${status.type}"><i class="fa-solid ${status.icon}"></i> ${status.label}</span>`;
+        }
+
+        /* ---------------- DISPLAY + STATS ---------------- */
+        function getSavedData() {
+            return JSON.parse(localStorage.getItem('office_files_data')) || [];
+        }
+
+        function updateStats(data) {
+            let overdue = 0, soon = 0, ok = 0;
+            data.forEach(item => {
+                let s = getStatus(item.dueDateVal).type;
+                if (s === 'overdue') overdue++;
+                else if (s === 'soon') soon++;
+                else ok++;
+            });
+            document.getElementById('statTotal').innerText = data.length;
+            document.getElementById('statOverdue').innerText = overdue;
+            document.getElementById('statSoon').innerText = soon;
+            document.getElementById('statOk').innerText = ok;
+            document.getElementById('savedCountPill').innerText = `${data.length} ഫയലുകൾ`;
+        }
+
+        function sortData(data) {
+            let { key, dir } = currentSort;
+            return [...data].sort((a, b) => {
+                let valA = (a[key] || '').toString().toLowerCase();
+                let valB = (b[key] || '').toString().toLowerCase();
+                if (key === 'dateVal' || key === 'dueDateVal') {
+                    valA = a[key] || '9999-99-99';
+                    valB = b[key] || '9999-99-99';
+                }
+                if (valA < valB) return dir === 'asc' ? -1 : 1;
+                if (valA > valB) return dir === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        function sortBy(key) {
+            if (currentSort.key === key) {
+                currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.key = key;
+                currentSort.dir = 'asc';
+            }
+            displaySavedData();
+        }
+
+        function updateSortIcons() {
+            document.querySelectorAll('#savedTable th.sortable').forEach(th => th.classList.remove('active'));
+            let map = { subject: 1, fileNo: 2, dateVal: 3, dueDateVal: 4 };
+            let ths = document.querySelectorAll('#savedTable th.sortable');
+            ths.forEach(th => {
+                let icon = th.querySelector('.sort-icon');
+                icon.className = 'fa-solid fa-sort sort-icon';
+            });
+            let keys = ['subject', 'fileNo', 'dateVal', 'dueDateVal'];
+            let idx = keys.indexOf(currentSort.key);
+            if (idx > -1) {
+                let th = ths[idx];
+                th.classList.add('active');
+                let icon = th.querySelector('.sort-icon');
+                icon.className = currentSort.dir === 'asc'
+                    ? 'fa-solid fa-sort-up sort-icon'
+                    : 'fa-solid fa-sort-down sort-icon';
+            }
+        }
+
+        function displaySavedData() {
+            let savedData = getSavedData();
+            updateStats(savedData);
+
+            let sorted = sortData(savedData);
+            let tbody = document.querySelector("#savedTable tbody");
+            tbody.innerHTML = "";
+
+            if (sorted.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">
+                    <i class="fa-solid fa-folder-open"></i><br>
+                    ഇതുവരെ ഫയലുകൾ ഒന്നും സേവ് ചെയ്തിട്ടില്ല.
+                </div></td></tr>`;
+                updateSortIcons();
+                return;
+            }
+
+            sorted.forEach((item, index) => {
+                let status = getStatus(item.dueDateVal);
+                let row = `<tr data-id="${item.id}" data-status="${status.type}">
+                    <td class="row-number" style="text-align:center;">${index + 1}</td>
+                    <td><b>${escapeHtml(item.subject)}</b></td>
+                    <td>${escapeHtml(item.fileNo) || '-'}</td>
+                    <td>${item.dateVal || '-'}</td>
+                    <td><i class="fa-regular fa-calendar"></i> ${item.dueDateVal}</td>
+                    <td>${escapeHtml(item.desc) || '-'}</td>
+                    <td style="text-align: center;">${badgeHtml(status)}</td>
+                    <td style="text-align: center;">
+                        <button class="btn-action-remind" onclick="remindSingle(${JSON.stringify(item.id)})" title="കലണ്ടറിലേക്ക് ചേർക്കുക"><i class="fa-solid fa-bell"></i></button>
+                        <button class="btn-action-del" onclick="deleteSavedItem(${JSON.stringify(item.id)})" title="ലിസ്റ്റിൽ നിന്ന് ഒഴിവാക്കുക"><i class="fa-solid fa-trash-can"></i></button>
+                    </td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+
+            updateSortIcons();
+            filterSavedData();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        /* ---------------- DELETE ---------------- */
+        function deleteSavedItem(id) {
+            if (confirm("ഈ ഫയൽ വിവരങ്ങൾ ലിസ്റ്റിൽ നിന്നും ഒഴിവാക്കണോ?")) {
+                let savedData = getSavedData();
+                savedData = savedData.filter(item => item.id !== id);
+                localStorage.setItem('office_files_data', JSON.stringify(savedData));
+                displaySavedData();
+                showToast('ഫയൽ വിവരം ഒഴിവാക്കി.', 'success');
+            }
+        }
+
+        /* ---------------- SEARCH + FILTER ---------------- */
+        function filterSavedData() {
+            let input = document.getElementById("searchInput").value.toLowerCase();
+            let statusVal = document.getElementById("statusFilter").value;
+            let rows = document.getElementById("savedTable").getElementsByTagName('tbody')[0].rows;
+
+            for (let i = 0; i < rows.length; i++) {
+                let row = rows[i];
+                if (!row.cells || row.cells.length < 7) continue;
+                let subjectText = row.cells[1].innerText.toLowerCase();
+                let fileNoText = row.cells[2].innerText.toLowerCase();
+                let descText = row.cells[5].innerText.toLowerCase();
+                let rowStatus = row.getAttribute('data-status');
+
+                let matchesSearch = subjectText.includes(input) || fileNoText.includes(input) || descText.includes(input);
+                let matchesStatus = statusVal === 'all' || rowStatus === statusVal;
+
+                row.style.display = (matchesSearch && matchesStatus) ? "" : "none";
+            }
+        }
+
+        /* ---------------- ICS GENERATION ---------------- */
+        function buildIcsForItems(items) {
+            let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Office File Manager//Smart Reminders//EN\n";
+
+            items.forEach(item => {
+                let startDateStr = item.dueDateVal.replace(/-/g, '');
+                let startDateObj = new Date(item.dueDateVal);
+                let endDateObj = new Date(startDateObj);
+                endDateObj.setDate(startDateObj.getDate() + 1);
+                let ey = endDateObj.getFullYear();
+                let em = (endDateObj.getMonth() + 1).toString().padStart(2, '0');
+                let ed = endDateObj.getDate().toString().padStart(2, '0');
+                let endDateStr = `${ey}${em}${ed}`;
+
+                let fullDesc = `File No: ${item.fileNo || 'N/A'}\\nDescription: ${item.desc || 'No description'}`;
+
+                icsContent += "BEGIN:VEVENT\n";
+                icsContent += `SUMMARY:Office Due: ${item.subject}\n`;
+                icsContent += `DTSTART;VALUE=DATE:${startDateStr}\n`;
+                icsContent += `DTEND;VALUE=DATE:${endDateStr}\n`;
+                icsContent += `DESCRIPTION:${fullDesc}\n`;
+                icsContent += "BEGIN:VALARM\nTRIGGER:-P1D\nACTION:DISPLAY\nDESCRIPTION:Reminder\nEND:VALARM\n";
+                icsContent += "END:VEVENT\n";
+            });
+
+            icsContent += "END:VCALENDAR";
+            return icsContent;
+        }
+
+        function downloadIcsFile(icsContent, filename) {
+            let blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function openGoogleCalendarPopup() {
+            let popupWidth = 600;
+            let popupHeight = 500;
+            let left = (screen.width / 2) - (popupWidth / 2);
+            let top = (screen.height / 2) - (popupHeight / 2);
+
+            window.open(
+                "https://calendar.google.com/calendar/render?rru=import",
+                "GoogleCalendarImportPopup",
+                `width=${popupWidth},height=${popupHeight},top=${top},left=${left},resizable=yes,scrollbars=yes`
+            );
+        }
+
+        // 🌟 ഒരൊറ്റ ക്ലിക്കിൽ എല്ലാ ഫയലുകളും ഡൗൺലോഡ് ചെയ്യുകയും ഒപ്പം പോപ്പ്-അപ്പ് വിൻഡോ തുറക്കുകയും ചെയ്യുന്ന സ്മാർട്ട് ഫങ്ക്ഷൻ
+        function oneClickCalendarSync() {
+            let savedData = getSavedData();
+            if (savedData.length === 0) {
+                showToast("സേവ് ചെയ്ത ലിസ്റ്റിൽ ഫയലുകൾ ഒന്നും തന്നെ ഇല്ല!", 'error');
+                return;
+            }
+            let icsContent = buildIcsForItems(savedData);
+            downloadIcsFile(icsContent, "office_file_reminders.ics");
+            openGoogleCalendarPopup();
+            showToast('കലണ്ടർ ഫയൽ ഡൗൺലോഡ് ആയി. ഇംപോർട്ട് ചെയ്യൂ!', 'success');
+        }
+
+        // 🔔 ഒരു ഫയലിന് മാത്രമായി കലണ്ടറിലേക്ക് ചേർക്കാൻ
+        function remindSingle(id) {
+            let savedData = getSavedData();
+            let item = savedData.find(i => i.id === id);
+            if (!item) return;
+            let icsContent = buildIcsForItems([item]);
+            downloadIcsFile(icsContent, `reminder_${item.subject.replace(/[^a-z0-9]/gi, '_')}.ics`);
+            openGoogleCalendarPopup();
+            showToast('ഈ ഫയലിന്റെ റിമൈൻഡർ ഡൗൺലോഡ് ആയി.', 'success');
+        }
+
+        // ⚠️ പേജ് ലോഡ് ആകുമ്പോൾ overdue/soon ഫയലുകൾ ഉണ്ടെങ്കിൽ അറിയിക്കുക
+        function checkReminders() {
+            let savedData = getSavedData();
+            let overdue = savedData.filter(i => getStatus(i.dueDateVal).type === 'overdue').length;
+            let soon = savedData.filter(i => getStatus(i.dueDateVal).type === 'soon').length;
+            if (overdue > 0) {
+                showToast(`⚠️ ${overdue} ഫയലുകളുടെ കാലാവധി കഴിഞ്ഞിരിക്കുന്നു!`, 'error');
+            } else if (soon > 0) {
+                showToast(`⏰ ${soon} ഫയലുകളുടെ ഡ്യൂ ഡേറ്റ് അടുത്തിരിക്കുന്നു.`, 'success');
+            }
+        }
+
+        /* ---------------- EXCEL EXPORT ---------------- */
+        function exportToExcel() {
+            let savedData = getSavedData();
+            if (savedData.length === 0) {
+                showToast("എക്സ്പോർട്ട് ചെയ്യാൻ ഫയലുകൾ ഒന്നും ഇല്ല!", 'error');
+                return;
+            }
+
+            let exportRows = sortData(savedData).map((item, index) => {
+                let status = getStatus(item.dueDateVal);
+                return {
+                    "Srl No": index + 1,
+                    "Subject": item.subject,
+                    "File No": item.fileNo || '-',
+                    "Date": item.dateVal || '-',
+                    "Due Date": item.dueDateVal,
+                    "Description": item.desc || '-',
+                    "Status": status.label
+                };
+            });
+
+            let worksheet = XLSX.utils.json_to_sheet(exportRows);
+            worksheet["!cols"] = [
+                { wch: 8 }, { wch: 28 }, { wch: 15 }, { wch: 14 }, { wch: 14 }, { wch: 30 }, { wch: 18 }
+            ];
+            let workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Office Files");
+
+            let today = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(workbook, `office_files_${today}.xlsx`);
+            showToast('Excel ഫയൽ ഡൗൺലോഡ് ആയി!', 'success');
+        }
+    </script>
+</body>
+</html>
