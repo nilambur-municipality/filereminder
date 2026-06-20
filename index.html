@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office File Multi-Entry & Calendar Reminder</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --calendar-color: #4285F4; /* Google Calendar Blue */
+            --danger-color: #e74c3c;
+            --bg: #f5f7fa;
+            --card-bg: #ffffff;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary), #34495e);
+            color: white;
+            text-align: center;
+            padding: 30px 20px;
+        }
+        .header h1 { margin: 0; font-size: 1.8rem; }
+        .header p { margin: 8px 0 0 0; opacity: 0.9; font-size: 0.95rem; }
+        
+        .container {
+            max-width: 1000px;
+            margin: -25px auto 40px auto;
+            padding: 0 20px;
+        }
+        .card {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        h2 {
+            margin-top: 0;
+            color: var(--primary);
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #e1e8ed;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+            color: var(--primary);
+            font-size: 0.95rem;
+        }
+        
+        input[type="text"], input[type="date"] {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 0.95rem;
+        }
+        input[type="text"]:focus, input[type="date"]:focus {
+            border-color: var(--calendar-color);
+            outline: none;
+        }
+        
+        .btn-container {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .btn-add { background-color: #27ae60; }
+        .btn-add:hover { background-color: #219653; }
+        .btn-submit { background-color: var(--calendar-color); font-size: 1rem; padding: 14px 25px; }
+        .btn-submit:hover { background-color: #2a65c4; }
+        .btn-delete { background-color: var(--danger-color); padding: 6px 10px; font-size: 0.85rem; }
+        .btn-delete:hover { background-color: #c0392b; }
+        
+        .row-number {
+            font-weight: bold;
+            color: #7f8c8d;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1><i class="fa-solid fa-calendar-days"></i> Office File Reminder System</h1>
+        <p>വിവരങ്ങൾ ടേബിളിൽ എന്റർ ചെയ്ത് ഗൂഗിൾ കലണ്ടറിലേക്ക് നേരിട്ട് റിമൈൻഡറുകൾ സെറ്റ് ചെയ്യുക</p>
+    </div>
+
+    <div class="container">
+        
+        <div class="card">
+            <h2><i class="fa-solid fa-table-list"></i> ഫയൽ വിവരങ്ങൾ ചേർക്കുക (Data Entry Table)</h2>
+            <p style="font-size: 0.9rem; color: #666; margin-top: 0;">താഴെ കാണുന്ന കോളങ്ങളിൽ വിവരങ്ങൾ നൽകുക. ആവശ്യാനുസരണം വരികൾ (Rows) കൂട്ടിച്ചേർക്കാവുന്നതാണ്.</p>
+            
+            <table id="entryTable">
+                <thead>
+                    <tr>
+                        <th style="width: 5%; text-align: center;">No.</th>
+                        <th style="width: 40%;"><i class="fa-solid fa-file-signature"></i> Subject (File Name)</th>
+                        <th style="width: 20%;"><i class="fa-solid fa-clock"></i> Reporting Date (Deadline)</th>
+                        <th style="width: 25%;"><i class="fa-solid fa-comment-dots"></i> Remarks / Notes</th>
+                        <th style="width: 10%; text-align: center;"><i class="fa-solid fa-trash"></i> Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="row-number">1</td>
+                        <td><input type="text" class="file-subject" placeholder="ഉദാ: Pension file - Ravi Kumar"></td>
+                        <td><input type="date" class="file-deadline"></td>
+                        <td><input type="text" class="file-remarks" placeholder="കുറിപ്പുകൾ..."></td>
+                        <td style="text-align: center;"><button class="btn-delete" onclick="deleteRow(this)"><i class="fa-solid fa-trash-can"></i></button></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="btn-container">
+                <button class="btn-add" onclick="addNewRow()"><i class="fa-solid fa-plus"></i> ➕ Add New Row (പുതിയ വരി ചേർക്കുക)</button>
+                <button class="btn-submit" onclick="submitToCalendar()"><i class="fa-solid fa-calendar-check"></i> 📅 Submit to Google Calendar</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ഇന്ന് മുതലുള്ള തീയതികൾ മാത്രം തിരഞ്ഞെടുക്കാൻ കലണ്ടർ ലോക്ക് ചെയ്യാനുള്ള ഫങ്ക്ഷൻ
+        function setMinDate(inputElement) {
+            let today = new Date().toISOString().split('T')[0];
+            inputElement.min = today;
+        }
+
+        // പേജ് ലോഡ് ചെയ്യുമ്പോൾ ആദ്യത്തെ ഇൻപുട്ടിന് തീയതി ലോക്ക് നൽകുക
+        window.onload = function() {
+            let firstDateInput = document.querySelector('.file-deadline');
+            if(firstDateInput) setMinDate(firstDateInput);
+        };
+
+        // ടേബിളിലേക്ക് പുതിയ വരി (Row) ചേർക്കുന്ന ഫങ്ക്ഷൻ
+        function addNewRow() {
+            let table = document.getElementById("entryTable").getElementsByTagName('tbody')[0];
+            let rowCount = table.rows.length;
+            let newRow = table.insertRow(rowCount);
+
+            newRow.innerHTML = `
+                <td class="row-number">${rowCount + 1}</td>
+                <td><input type="text" class="file-subject" placeholder="ഫയലിന്റെ പേര്..."></td>
+                <td><input type="date" class="file-deadline"></td>
+                <td><input type="text" class="file-remarks" placeholder="കുറിപ്പുകൾ..."></td>
+                <td style="text-align: center;"><button class="btn-delete" onclick="deleteRow(this)"><i class="fa-solid fa-trash-can"></i></button></td>
+            `;
+            
+            // പുതിയ തീയതി ബോക്സിനും നിലവിലെ തീയതി ലോക്ക് സെറ്റ് ചെയ്യുക
+            setMinDate(newRow.querySelector('.file-deadline'));
+            updateRowNumbers();
+        }
+
+        // വരികൾ ഡിലീറ്റ് ചെയ്യുമ്പോൾ ക്രമനമ്പർ മാറ്റാനുള്ള ഫങ്ക്ഷൻ
+        function updateRowNumbers() {
+            let rows = document.getElementById("entryTable").getElementsByTagName('tbody')[0].rows;
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].getElementsByClassName('row-number')[0].innerText = i + 1;
+            }
+        }
+
+        // ഒരു വരി ഡിലീറ്റ് ചെയ്യാനുള്ള ഫങ്ക്ഷൻ
+        function deleteRow(button) {
+            let table = document.getElementById("entryTable").getElementsByTagName('tbody')[0];
+            if (table.rows.length > 1) {
+                let row = button.parentNode.parentNode;
+                row.parentNode.removeChild(row);
+                updateRowNumbers();
+            } else {
+                alert("കുറഞ്ഞത് ഒരു വരിയെങ്കിലും ടേബിളിൽ ഉണ്ടായിരിക്കണം.");
+            }
+        }
+
+        // സബ്മിറ്റ് ചെയ്യുമ്പോൾ എല്ലാ ഡാറ്റയും കലണ്ടറിലേക്ക് അയക്കുന്ന ഫങ്ക്ഷൻ
+        function submitToCalendar() {
+            let rows = document.getElementById("entryTable").getElementsByTagName('tbody')[0].rows;
+            let filledCount = 0;
+
+            for (let i = 0; i < rows.length; i++) {
+                let subject = rows[i].getElementsByClassName('file-subject')[0].value.trim();
+                let dateVal = rows[i].getElementsByClassName('file-deadline')[0].value;
+                let remarks = rows[i].getElementsByClassName('file-remarks')[0].value.trim();
+
+                // വിവരങ്ങൾ പൂർണ്ണമായി നൽകിയിട്ടുണ്ടെങ്കിൽ മാത്രം കലണ്ടറിലേക്ക് ലിങ്ക് ചെയ്യും
+                if (subject && dateVal) {
+                    filledCount++;
+                    let formattedDate = dateVal.replace(/-/g, '');
+                    
+                    // Google Calendar Event Link നിർമ്മാണം
+                    let googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Office Due: ' + subject)}&dates=${formattedDate}/${formattedDate}&details=${encodeURIComponent(remarks || 'No remarks')}&sf=true&output=xml`;
+                    
+                    // ഓരോ ഫയലിനും വെവ്വേറെ ടാബുകളിൽ കലണ്ടർ വിൻഡോകൾ ഓപ്പൺ ചെയ്യും
+                    window.open(googleCalUrl, '_blank');
+                }
+            }
+
+            if (filledCount === 0) {
+                alert("ദയവായി കുറഞ്ഞത് ഒരു ഫയലിന്റെയെങ്കിലും Subject, Reporting Date എന്നിവ നൽകുക.");
+            }
+        }
+    </script>
+</body>
+</html>
